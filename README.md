@@ -15,7 +15,7 @@ No login. No app. Just open the URL.
 ---
 
 Built to validate the product hypothesis in:
-[BookMyShow: The Case for Date-First Event Discovery](https://buildthisnextonline.substack.com)
+[BookMyShow: The Case for Date-First Event Discovery](https://buildthisnext.substack.com)
 
 Source code and build notes: https://github.com/BuildThisNextOnline/bms-showboard-code
 
@@ -25,3 +25,4 @@ If you're at BookMyShow and want to discuss how to improve event discovery on th
 or if you're interested in Product Consulting: reach out via Substack or LinkedIn.
 
 *Kamal Gaur -- Build This Next Online*
+https://buildthisnext.substack.com
