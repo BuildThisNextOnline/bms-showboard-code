@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Show Board — Bengaluru</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0c0a;
+    color: #e8dcc8;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    min-height: 100vh;
+  }
+
+  /* ── Masthead ── */
+  .masthead {
+    border-bottom: 3px double #3a3020;
+    padding: 28px 40px 20px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: linear-gradient(180deg, #111008 0%, #0d0c0a 100%);
+  }
+  .masthead-top {
+    display: flex; align-items: center; gap: 16px; width: 100%;
+  }
+  .rule {
+    flex: 1; height: 1px;
+    background: linear-gradient(90deg, transparent, #b45309, transparent);
+  }
+  .title-block { text-align: center; }
+  .edition-label {
+    font-size: 13px; letter-spacing: 6px; color: #b45309;
+    text-transform: uppercase; font-weight: normal; margin-bottom: 4px;
+  }
+  .edition-title {
+    font-size: 38px; letter-spacing: -1px; color: #f5e6c8;
+    font-weight: bold; line-height: 1;
+  }
+  .edition-date {
+    font-size: 11px; color: #6b5a3a; letter-spacing: 3px;
+    text-transform: uppercase; margin-top: 6px;
+  }
+
+  /* ── Body ── */
+  .body {
+    padding: 32px 40px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ── Input section ── */
+  .input-section { margin-bottom: 32px; }
+
+  .drop-zone {
+    border: 2px dashed #3a3020;
+    border-radius: 2px;
+    padding: 32px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 16px;
+  }
+  .drop-zone:hover, .drop-zone.dragging {
+    border-color: #b45309;
+    background: #1a1206;
+  }
+  .drop-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.5; }
+  .drop-label { font-size: 14px; color: #e8dcc8; margin-bottom: 4px; }
+  .drop-hint { font-size: 11px; color: #6b5a3a; font-style: italic; }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .divider-line { flex: 1; height: 1px; background: #2a2318; }
+  .divider-text { font-size: 11px; color: #6b5a3a; letter-spacing: 2px; }
+
+  textarea {
+    width: 100%;
+    background: #161410;
+    border: 1px solid #3a3020;
+    color: #e8dcc8;
+    padding: 12px 16px;
+    font-family: monospace;
+    font-size: 12px;
+    outline: none;
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  .btn {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 10px 24px;
+    background: #b45309;
+    border: 1px solid #b45309;
+    color: #0d0c0a;
+    font-family: 'Georgia', serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    font-weight: bold;
+    transition: opacity 0.2s;
+  }
+  .btn:hover { opacity: 0.85; }
+
+  .btn-sm {
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid #3a3020;
+    color: #9a8060;
+    font-family: 'Georgia', serif;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: opacity 0.2s;
+  }
+  .btn-sm:hover { opacity: 0.75; }
+
+  .loaded-bar {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+  }
+  .loaded-name { font-size: 12px; color: #6b5a3a; font-style: italic; }
+
+  .error-box {
+    margin-top: 12px; color: #ef4444; font-size: 13px;
+    padding: 10px 14px; border: 1px solid #3f1515; background: #1a0a0a;
+  }
+
+  /* ── Top Pick ── */
+  .top-pick {
+    border: 1px solid #b45309;
+    padding: 24px 28px;
+    margin-bottom: 32px;
+    position: relative;
+    background: linear-gradient(135deg, #1a1206 0%, #0f0e0b 100%);
+  }
+  .top-pick-label {
+    position: absolute; top: -10px; left: 20px;
+    background: #b45309; color: #0d0c0a;
+    font-size: 10px; letter-spacing: 4px;
+    padding: 2px 10px; text-transform: uppercase; font-weight: bold;
+  }
+  .top-pick-title { font-size: 26px; color: #f5e6c8; margin-bottom: 8px; line-height: 1.2; }
+  .top-pick-reason { font-size: 15px; color: #c9b48a; font-style: italic; line-height: 1.6; }
+
+  /* ── Stats ── */
+  .stats-row {
+    display: flex; gap: 24px; flex-wrap: wrap;
+    margin-bottom: 28px;
+    border-top: 1px solid #2a2318; border-bottom: 1px solid #2a2318;
+    padding: 12px 0;
+  }
+  .stat { display: flex; flex-direction: column; gap: 2px; }
+  .stat-val { font-size: 22px; color: #b45309; font-weight: bold; }
+  .stat-val-sm { font-size: 14px; color: #b45309; font-weight: bold; padding-top: 4px; }
+  .stat-label { font-size: 11px; color: #6b5a3a; letter-spacing: 2px; text-transform: uppercase; }
+
+  /* ── Category toggles ── */
+  .cat-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .cat-toggle {
+    padding: 5px 14px;
+    border: 1px solid #3a3020;
+    background: transparent;
+    color: #6b5a3a;
+    font-family: 'Georgia', serif;
+    font-size: 12px; letter-spacing: 1px;
+    cursor: pointer; text-transform: uppercase;
+    transition: all 0.15s; user-select: none;
+  }
+  .cat-toggle.active {
+    /* set via JS using data-color */
+  }
+
+  /* ── Events Grid ── */
+  .events-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .event-card {
+    background: #111008;
+    border: 1px solid #2a2318;
+    padding: 16px 18px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+  .event-card.in-demand {
+    background: #1a1206;
+    border-color: rgba(180, 83, 9, 0.33);
+  }
+  .in-demand-badge {
+    position: absolute; top: 10px; right: 10px;
+    background: #92400e; color: #fde68a;
+    font-size: 10px; letter-spacing: 2px;
+    padding: 2px 6px; text-transform: uppercase;
+    border: 1px solid #b45309;
+  }
+  .event-cat-label {
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .event-title {
+    font-size: 15px; color: #f5e6c8;
+    margin-bottom: 6px; line-height: 1.3; padding-right: 48px;
+  }
+  a.event-title-link {
+    display: block; text-decoration: none;
+    color: #f5e6c8; transition: color 0.15s;
+  }
+  a.event-title-link:hover { color: #b45309; text-decoration: underline; }
+  .event-meta {
+    font-size: 11px; color: #6b5a3a;
+    margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .event-why {
+    font-size: 12px; color: #9a8060; font-style: italic;
+    line-height: 1.5; border-top: 1px solid #2a2318;
+    padding-top: 8px; margin-top: 4px;
+  }
+  .recurrence-badge {
+    display: inline-block;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 2px; margin-top: 6px;
+    font-style: normal;
+  }
+  .recurrence-badge.one-time   { background: #1a1206; color: #b45309; border: 1px solid #b4530966; }
+  .recurrence-badge.recurring  { background: #0d1a12; color: #34d399; border: 1px solid #34d39966; }
+  .no-events { color: #6b5a3a; font-style: italic; font-size: 14px; }
+
+  /* ── Ticker ── */
+  .ticker-bar {
+    border-top: 1px solid #2a2318;
+    padding: 10px 0; overflow: hidden;
+    white-space: nowrap; margin-top: 32px;
+  }
+  .ticker-text {
+    display: inline-block; color: #6b5a3a;
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+  }
+
+  .hidden { display: none !important; }
+
+  @media (max-width: 600px) {
+    .masthead { padding: 20px 16px 14px; }
+    .body { padding: 20px 16px; }
+    .edition-title { font-size: 26px; }
+    .stats-row { gap: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Masthead ── -->
+<div class="masthead">
+  <div class="masthead-top">
+    <div class="rule"></div>
+    <div class="title-block">
+      <div class="edition-label">Bengaluru Evening Edition</div>
+      <div class="edition-title">THE SHOW BOARD</div>
+      <div class="edition-date" id="edition-date"></div>
+    </div>
+    <div class="rule"></div>
+  </div>
+</div>
+
+<div class="body">
+
+  <!-- ── Input Section ── -->
+  <div class="input-section" id="input-section">
+
+    <!-- Drop zone -->
+    <div class="drop-zone" id="drop-zone">
+      <div class="drop-icon">⬆</div>
+      <div class="drop-label">Drop <strong>digest.json</strong> here, or click to browse</div>
+      <div class="drop-hint">Load <strong>digest_latest.json</strong> for this week, or any file from the <strong>digests/</strong> folder for a past week</div>
+      <input type="file" id="file-input" accept=".json,application/json" style="display:none">
+    </div>
+
+    <!-- Divider -->
+    <div class="divider">
+      <div class="divider-line"></div>
+      <span class="divider-text">OR PASTE JSON</span>
+      <div class="divider-line"></div>
+    </div>
+
+    <!-- Paste fallback -->
+    <textarea id="paste-input" placeholder="If Google Drive opened digest.json as text in your browser — Ctrl+A, Ctrl+C there, then paste here"></textarea>
+    <button class="btn" onclick="loadFromPaste()">Load →</button>
+  </div>
+
+  <!-- Loaded bar (shown after load) -->
+  <div class="loaded-bar hidden" id="loaded-bar">
+    <span class="loaded-name" id="loaded-name"></span>
+    <button class="btn-sm" onclick="reset()">✕ Load different file</button>
+  </div>
+
+  <div class="error-box hidden" id="error-box"></div>
+
+  <!-- ── Results ── -->
+  <div class="hidden" id="results">
+
+    <!-- Top Pick -->
+    <div class="top-pick" id="top-pick-box">
+      <div class="top-pick-label">This Week's Pick</div>
+      <div class="top-pick-title" id="top-pick-title"></div>
+      <div class="top-pick-reason" id="top-pick-reason"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-val" id="stat-events">—</div>
+        <div class="stat-label">Events Found</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="stat-cats">0</div>
+        <div class="stat-label">Categories</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="stat-in-demand">0</div>
+        <div class="stat-label">In Demand</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val-sm" id="stat-window">—</div>
+        <div class="stat-label">Week Window</div>
+      </div>
+    </div>
+
+    <!-- Category toggles -->
+    <div class="cat-grid" id="cat-grid"></div>
+
+    <!-- Events grid -->
+    <div id="events-container"></div>
+
+    <!-- Ticker -->
+    <div class="ticker-bar hidden" id="ticker-bar">
+      <span class="ticker-text" id="ticker-text"></span>
+    </div>
+
+  </div><!-- /results -->
+
+</div><!-- /body -->
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────────
+
+const ICONS = {
+  Movies:"◈", Movie:"◈", Plays:"◉", Play:"◉",
+  Concert:"♦", Concerts:"♦", "Live Music":"♦",
+  Comedy:"◆", "Comedy / Standup":"◆", Standup:"◆",
+  Sports:"▲", Sport:"▲", Experience:"●", Experiences:"●",
+  Workshop:"◐", Workshops:"◐", "Food & Drink":"◍", Food:"◍",
+  "Art & Culture":"◎", Art:"◎", Culture:"◎",
+  Kids:"◌", Nightlife:"◑", Wellness:"◒", Events:"◈", Other:"◇",
+};
+const COLORS = {
+  Movies:"#f59e0b", Movie:"#f59e0b", Plays:"#a78bfa", Play:"#a78bfa",
+  Concert:"#34d399", Concerts:"#34d399", "Live Music":"#34d399",
+  Comedy:"#fb923c", "Comedy / Standup":"#fb923c", Standup:"#fb923c",
+  Sports:"#60a5fa", Sport:"#60a5fa", Experience:"#f472b6", Experiences:"#f472b6",
+  Workshop:"#e879f9", Workshops:"#e879f9", "Food & Drink":"#fbbf24", Food:"#fbbf24",
+  "Art & Culture":"#c084fc", Art:"#c084fc", Culture:"#c084fc",
+  Kids:"#4ade80", Nightlife:"#818cf8", Wellness:"#2dd4bf",
+  Events:"#f59e0b", Other:"#94a3b8",
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentData = null;
+let activeCats = new Set(["__all__"]);
+let tickerInterval = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(function init() {
+  // Set date in masthead
+  const { windowStart, windowEnd } = getWeekWindow();
+  document.getElementById("edition-date").textContent =
+    new Date().toLocaleDateString("en-IN", { weekday:"long", year:"numeric", month:"long", day:"numeric" }) +
+    " · Week " + windowStart + " → " + windowEnd + " · Powered by Claude";
+
+  // Auto-fetch digest_latest.json from same origin (works on GitHub Pages)
+  // Falls back silently to manual upload if not found (local use)
+  if (location.protocol !== "file:") {
+    fetch("digest_latest.json")
+      .then(r => { if (!r.ok) throw new Error("not found"); return r.text(); })
+      .then(text => {
+        parseAndRender(text, "digest_latest.json");
+        // Hide the input section since data loaded automatically
+        document.getElementById("input-section").classList.add("hidden");
+      })
+      .catch(() => {
+        // No auto-load — show upload UI as normal
+      });
+  }
+
+  // File input
+  const fileInput = document.getElementById("file-input");
+  const dropZone  = document.getElementById("drop-zone");
+
+  dropZone.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) readFile(file);
+  });
+
+  // Drag and drop
+  dropZone.addEventListener("dragover",  (e) => { e.preventDefault(); dropZone.classList.add("dragging"); });
+  dropZone.addEventListener("dragleave", ()  => dropZone.classList.remove("dragging"));
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("dragging");
+    const file = e.dataTransfer.files[0];
+    if (file) readFile(file);
+  });
+})();
+
+// ── Date window ───────────────────────────────────────────────────────────────
+function getWeekWindow() {
+  const now = new Date();
+  const ist = new Date(now.getTime() + 5.5 * 3600 * 1000);
+  const day = ist.getUTCDay();
+  const thisSun = new Date(ist);
+  thisSun.setUTCDate(ist.getUTCDate() - day);
+  const nextSun = new Date(thisSun);
+  nextSun.setUTCDate(thisSun.getUTCDate() + 7);
+  const fmt = d => d.toISOString().slice(0, 10);
+  return { windowStart: fmt(thisSun), windowEnd: fmt(nextSun) };
+}
+
+// ── File reading ──────────────────────────────────────────────────────────────
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => parseAndRender(e.target.result, file.name);
+  reader.readAsText(file);
+}
+
+function loadFromPaste() {
+  const text = document.getElementById("paste-input").value;
+  if (!text.trim()) { showError("Nothing to load — paste the contents of digest.json first."); return; }
+  parseAndRender(text, "digest.json");
+}
+
+function parseAndRender(text, name) {
+  hideError();
+  try {
+    const clean = text.replace(/```json|```/g, "").trim();
+    if (!clean.startsWith("{")) throw new Error("Not valid JSON — expected the contents of digest.json from the scraper.");
+    const data = JSON.parse(clean);
+    if (!data.categories) throw new Error("Missing 'categories' field — wrong file? Expected digest.json from the BMS scraper.");
+    currentData = data;
+    activeCats = new Set(["__all__"]);
+    showLoadedBar(name, data);
+    renderResults(data);
+  } catch(e) {
+    showError(e.message);
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderResults(data) {
+  // Hide input, show results
+  document.getElementById("input-section").classList.add("hidden");
+  document.getElementById("results").classList.remove("hidden");
+
+  // Top pick
+  const tp = data.top_pick;
+  if (tp && tp.title) {
+    document.getElementById("top-pick-box").classList.remove("hidden");
+    document.getElementById("top-pick-title").textContent = tp.title;
+    document.getElementById("top-pick-reason").textContent = tp.reason || "";
+  } else {
+    document.getElementById("top-pick-box").classList.add("hidden");
+  }
+
+  // Stats
+  const urgentCount = (data.categories || []).reduce((n, c) => n + (c.events || []).filter(e => e.in_demand).length, 0);
+  const w = data.window || {};
+  document.getElementById("stat-events").textContent = data.total_events || "—";
+  document.getElementById("stat-cats").textContent   = (data.categories || []).length;
+  document.getElementById("stat-in-demand").textContent = urgentCount;
+  document.getElementById("stat-window").textContent = w.from ? w.from.slice(5) + " – " + w.to.slice(5) : "—";
+
+  // Category toggles
+  renderCatToggles(data.categories || []);
+
+  // Events
+  renderEvents();
+
+  // Ticker
+  if (data.curator_note) {
+    const bar  = document.getElementById("ticker-bar");
+    const span = document.getElementById("ticker-text");
+    const note = data.curator_note;
+    span.textContent = "★  " + note + "  ★  " + note + "  ★  " + note;
+    bar.classList.remove("hidden");
+    startTicker(span);
+  }
+}
+
+function renderCatToggles(categories) {
+  const grid = document.getElementById("cat-grid");
+  grid.innerHTML = "";
+
+  const totalAll = categories.reduce((n, c) => n + (c.events || []).length, 0);
+  grid.appendChild(makeToggle("__all__", "◈ All (" + totalAll + ")", "#e8dcc8", true));
+
+  categories.forEach(cat => {
+    const color = COLORS[cat.name] || "#9a8060";
+    const icon  = ICONS[cat.name]  || "◇";
+    grid.appendChild(makeToggle(cat.name, icon + " " + cat.name + " (" + (cat.events||[]).length + ")", color, false));
+  });
+}
+
+function makeToggle(name, label, color, isActive) {
+  const btn = document.createElement("button");
+  btn.className = "cat-toggle" + (isActive ? " active" : "");
+  btn.textContent = label;
+  btn.dataset.name = name;
+  btn.dataset.color = color;
+  applyToggleStyle(btn, isActive, color);
+  btn.addEventListener("click", () => {
+    toggleCat(name);
+    // Re-style all toggles
+    document.querySelectorAll(".cat-toggle").forEach(b => {
+      const n = b.dataset.name;
+      const c = b.dataset.color;
+      const on = activeCats.has(n);
+      applyToggleStyle(b, on, c);
+    });
+    renderEvents();
+  });
+  return btn;
+}
+
+function applyToggleStyle(btn, active, color) {
+  btn.style.borderColor  = active ? color : "#3a3020";
+  btn.style.color        = active ? color : "#6b5a3a";
+  btn.style.background   = active ? color + "28" : "transparent";
+}
+
+function toggleCat(name) {
+  if (name === "__all__") { activeCats = new Set(["__all__"]); return; }
+  activeCats.delete("__all__");
+  if (activeCats.has(name)) {
+    activeCats.delete(name);
+    if (activeCats.size === 0) activeCats = new Set(["__all__"]);
+  } else {
+    activeCats.add(name);
+  }
+}
+
+function renderEvents() {
+  const container = document.getElementById("events-container");
+  container.innerHTML = "";
+
+  if (!currentData) return;
+  const cats = activeCats.has("__all__")
+    ? currentData.categories
+    : currentData.categories.filter(c => activeCats.has(c.name));
+
+  const events = (cats || []).flatMap(c => (c.events || []).map(ev => ({...ev, _cat: c.name})));
+
+  if (events.length === 0) {
+    const p = document.createElement("p");
+    p.className = "no-events";
+    p.textContent = "No events match the selected filters.";
+    container.appendChild(p);
+    return;
+  }
+
+  const grid = document.createElement("div");
+  grid.className = "events-grid";
+
+  events.forEach(ev => {
+    const color = COLORS[ev._cat] || "#9a8060";
+    const icon  = ICONS[ev._cat]  || "◇";
+
+    const card = document.createElement("div");
+    card.className = "event-card" + (ev.in_demand ? " in-demand" : "");
+
+    if (ev.in_demand) {
+      const badge = document.createElement("div");
+      badge.className = "in-demand-badge";
+      badge.textContent = "🔥 In Demand";
+      card.appendChild(badge);
+    }
+
+    const catLabel = document.createElement("div");
+    catLabel.className = "event-cat-label";
+    catLabel.style.color = color;
+    catLabel.textContent = icon + " " + ev._cat;
+    card.appendChild(catLabel);
+
+    const titleEl = ev.url
+      ? (() => {
+          const a = document.createElement("a");
+          a.className = "event-title event-title-link";
+          a.textContent = ev.title || "";
+          a.href = ev.url;
+          a.target = "_blank";
+          a.rel = "noopener noreferrer";
+          return a;
+        })()
+      : (() => {
+          const d = document.createElement("div");
+          d.className = "event-title";
+          d.textContent = ev.title || "";
+          return d;
+        })();
+    card.appendChild(titleEl);
+
+    const meta = document.createElement("div");
+    meta.className = "event-meta";
+    if (ev.venue)  meta.innerHTML += `<span style="color:#9a8060">📍 ${ev.venue}</span>`;
+    // Show timing if available, fall back to date_iso, show both if timing lacks the date
+    const dateDisplay = ev.timing || (ev.date_iso ? ev.date_iso : null);
+    if (dateDisplay) meta.innerHTML += `<span style="color:#6b8a6b">🕐 ${dateDisplay}</span>`;
+    if (ev.price)  meta.innerHTML += `<span style="color:#b45309">₹ ${ev.price}</span>`;
+    card.appendChild(meta);
+
+    if (ev.recurrence) {
+      const badge = document.createElement("div");
+      badge.className = "recurrence-badge " + ev.recurrence;
+      badge.textContent = ev.recurrence === "one-time" ? "⬡ One-time" : "↺ Recurring";
+      card.appendChild(badge);
+    }
+
+    if (ev.why) {
+      const why = document.createElement("div");
+      why.className = "event-why";
+      why.textContent = ev.why;
+      card.appendChild(why);
+    }
+
+    grid.appendChild(card);
+  });
+
+  container.appendChild(grid);
+}
+
+// ── Ticker ────────────────────────────────────────────────────────────────────
+function startTicker(el) {
+  if (tickerInterval) clearInterval(tickerInterval);
+  let pos = 0;
+  tickerInterval = setInterval(() => {
+    pos = (pos + 1) % 2400;
+    el.style.transform = "translateX(-" + pos + "px)";
+  }, 30);
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function showLoadedBar(name, data) {
+  const w = data.window || {};
+  const windowStr = w.from && w.to ? " · " + w.from + " → " + w.to : "";
+  const fetchedStr = data.fetched_at && data.fetched_at !== "unknown"
+    ? " · scraped " + new Date(data.fetched_at).toLocaleString("en-IN", {day:"numeric", month:"short", hour:"2-digit", minute:"2-digit"})
+    : "";
+  document.getElementById("loaded-name").textContent = "✓ " + name + windowStr + fetchedStr;
+  document.getElementById("loaded-bar").classList.remove("hidden");
+}
+
+function showError(msg) {
+  const box = document.getElementById("error-box");
+  box.textContent = "⚠ " + msg;
+  box.classList.remove("hidden");
+}
+function hideError() {
+  document.getElementById("error-box").classList.add("hidden");
+}
+
+function reset() {
+  currentData = null;
+  activeCats  = new Set(["__all__"]);
+  if (tickerInterval) clearInterval(tickerInterval);
+
+  document.getElementById("input-section").classList.remove("hidden");
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("loaded-bar").classList.add("hidden");
+  document.getElementById("ticker-bar").classList.add("hidden");
+  document.getElementById("paste-input").value = "";
+  document.getElementById("file-input").value  = "";
+  hideError();
+}
+</script>
+</body>
+</html>
