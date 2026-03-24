@@ -775,6 +775,11 @@ function rebuildAreaCounts(filteredEvents) {
   } else if (unknownCount === 0 && unknownBtn) {
     unknownBtn.style.display = "none";
   }
+
+  // If zones are selected, rebuild Level 2 with updated counts
+  if (!activeAreaZones.has("__all__") && activeAreaZones.size > 0) {
+    rebuildLevel2Areas(window._bmsZoneAreas, activeAreaZones);
+  }
 }
 
 function rebuildLevel2Areas(zoneAreas, activeAreaZones) {
