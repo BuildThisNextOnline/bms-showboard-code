@@ -395,9 +395,9 @@ const COLORS = {
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentData = null;
-let activeCatGroup = "__all__";
+let activeGroups = new Set(["__all__"]);
 let activeCats = new Set(["__all__"]);
-let activeAreaZone = "__all__";
+let activeAreaZones = new Set(["__all__"]);
 let activeAreas = new Set(["__all__"]);
 let tickerInterval = null;
 
@@ -532,7 +532,7 @@ function renderResults(data) {
 }
 
 function renderCatToggles(categories) {
-  // Build group → events count map
+  // Build group → cats map and counts
   const groupCounts = {};
   const groupCats = {};
   categories.forEach(cat => {
@@ -542,99 +542,113 @@ function renderCatToggles(categories) {
     groupCats[grp].push(cat);
   });
 
-  // Level 1: group grid
   const groupGrid = document.getElementById("cat-group-grid");
   groupGrid.innerHTML = "";
+  document.getElementById("cat-detail-row").innerHTML = "";
+  document.getElementById("cat-detail-row").classList.add("hidden");
+
   const totalAll = categories.reduce((n, c) => n + (c.events||[]).length, 0);
+
+  // All button
   const allBtn = makeToggle("__all__", "◈ All (" + totalAll + ")", "#e8dcc8", true);
   allBtn.addEventListener("click", () => {
-    activeCatGroup = "__all__";
+    activeGroups = new Set(["__all__"]);
     activeCats = new Set(["__all__"]);
+    document.getElementById("cat-detail-row").innerHTML = "";
     document.getElementById("cat-detail-row").classList.add("hidden");
-    document.querySelectorAll("#cat-group-grid .cat-toggle").forEach(b =>
-      applyToggleStyle(b, b.dataset.name === "__all__", b.dataset.color));
+    refreshGroupStyles(groupGrid);
     renderEvents();
   });
   groupGrid.appendChild(allBtn);
 
+  // Group buttons
   Object.entries(groupCounts).sort().forEach(([grp, count]) => {
-    const btn = makeToggle(grp, grp + " (" + count + ")", "#c8a870", activeCatGroup === grp);
+    const btn = makeToggle(grp, grp + " (" + count + ")", "#c8a870", false);
     btn.addEventListener("click", () => {
-      activeCatGroup = grp;
+      // Toggle this group
+      if (activeGroups.has("__all__")) activeGroups = new Set();
+      if (activeGroups.has(grp)) {
+        activeGroups.delete(grp);
+        if (activeGroups.size === 0) activeGroups = new Set(["__all__"]);
+      } else {
+        activeGroups.add(grp);
+      }
       activeCats = new Set(["__all__"]);
-      // Populate Level 2
-      const detailGrid = document.getElementById("cat-grid");
-      detailGrid.innerHTML = "";
-      const grpCats = groupCats[grp] || [];
-      const grpTotal = grpCats.reduce((n, c) => n + (c.events||[]).length, 0);
-      detailGrid.appendChild(makeToggle("__all__", "◈ All " + grp + " (" + grpTotal + ")", "#e8dcc8", true));
-      grpCats.forEach(cat => {
-        const color = COLORS[cat.name] || "#9a8060";
-        const icon  = ICONS[cat.name]  || "◇";
-        const b = makeToggle(cat.name, icon + " " + cat.name + " (" + (cat.events||[]).length + ")", color, false);
-        detailGrid.appendChild(b);
-      });
-      document.getElementById("cat-detail-row").classList.remove("hidden");
-      document.querySelectorAll("#cat-group-grid .cat-toggle").forEach(b =>
-        applyToggleStyle(b, b.dataset.name === grp, b.dataset.color));
+      rebuildLevel2Cats(groupCats, activeGroups);
+      refreshGroupStyles(groupGrid);
       renderEvents();
     });
     groupGrid.appendChild(btn);
   });
 }
 
-function renderAreaToggles(categories) {
-  const allEvents = categories.flatMap(c => c.events || []);
-  const zoneCounts = {};
-  const zoneAreas = {};
-  allEvents.forEach(ev => {
-    const zone = ev.area_zone;
-    const area = ev.area;
-    if (!zone || !area) return;
-    zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
-    if (!zoneAreas[zone]) zoneAreas[zone] = {};
-    zoneAreas[zone][area] = (zoneAreas[zone][area] || 0) + 1;
-  });
-
-  const section = document.getElementById("area-filter-section");
-  const zoneGrid = document.getElementById("area-zone-grid");
-  zoneGrid.innerHTML = "";
-  if (Object.keys(zoneCounts).length === 0) { section.classList.add("hidden"); return; }
-  section.classList.remove("hidden");
-
-  const totalAreas = allEvents.filter(e => e.area).length;
-  const allBtn = makeAreaToggle("__all__", "⊙ All Areas (" + totalAreas + ")", true);
-  allBtn.addEventListener("click", () => {
-    activeAreaZone = "__all__";
-    activeAreas = new Set(["__all__"]);
-    document.getElementById("area-detail-row").classList.add("hidden");
-    document.querySelectorAll("#area-zone-grid .cat-toggle").forEach(b =>
-      applyToggleStyle(b, b.dataset.name === "__all__", "#9a8060"));
-    renderEvents();
-  });
-  zoneGrid.appendChild(allBtn);
-
-  ["Central", "South", "North", "East", "West", "Other"].forEach(zone => {
-    if (!zoneCounts[zone]) return;
-    const btn = makeAreaToggle(zone, zone + " (" + zoneCounts[zone] + ")", activeAreaZone === zone);
-    btn.addEventListener("click", () => {
-      activeAreaZone = zone;
-      activeAreas = new Set(["__all__"]);
-      // Populate Level 2
-      const detailGrid = document.getElementById("area-grid");
-      detailGrid.innerHTML = "";
-      const areas = Object.entries(zoneAreas[zone] || {}).sort((a,b) => a[0].localeCompare(b[0]));
-      const zoneTotal = zoneCounts[zone];
-      detailGrid.appendChild(makeAreaToggle("__all__", "⊙ All " + zone + " (" + zoneTotal + ")", true));
-      areas.forEach(([area, count]) => {
-        detailGrid.appendChild(makeAreaToggle(area, "⌖ " + area + " (" + count + ")", false));
-      });
-      document.getElementById("area-detail-row").classList.remove("hidden");
-      document.querySelectorAll("#area-zone-grid .cat-toggle").forEach(b =>
-        applyToggleStyle(b, b.dataset.name === zone, "#9a8060"));
+function rebuildLevel2Cats(groupCats, activeGroups) {
+  const detailRow = document.getElementById("cat-detail-row");
+  detailRow.innerHTML = "";
+  if (activeGroups.has("__all__") || activeGroups.size === 0) {
+    detailRow.classList.add("hidden");
+    return;
+  }
+  detailRow.classList.remove("hidden");
+  // One sub-row per selected group
+  activeGroups.forEach(grp => {
+    const cats = groupCats[grp] || [];
+    if (cats.length === 0) return;
+    const label = document.createElement("div");
+    label.className = "filter-label-sub";
+    label.textContent = grp;
+    detailRow.appendChild(label);
+    const subGrid = document.createElement("div");
+    subGrid.className = "cat-grid";
+    subGrid.dataset.group = grp;
+    const grpTotal = cats.reduce((n, c) => n + (c.events||[]).length, 0);
+    const allBtn = makeToggle("__all__:" + grp, "◈ All (" + grpTotal + ")", "#e8dcc8", true);
+    allBtn.addEventListener("click", () => {
+      // Remove all cats from this group from activeCats
+      cats.forEach(c => activeCats.delete(c.name));
+      activeCats.delete("__all__:" + grp);
+      if (activeCats.size === 0) activeCats = new Set(["__all__"]);
+      refreshSubgridStyles(subGrid, cats);
       renderEvents();
     });
-    zoneGrid.appendChild(btn);
+    subGrid.appendChild(allBtn);
+    cats.forEach(cat => {
+      const color = COLORS[cat.name] || "#9a8060";
+      const icon  = ICONS[cat.name]  || "◇";
+      const btn = makeToggle(cat.name, icon + " " + cat.name + " (" + (cat.events||[]).length + ")", color, false);
+      btn.addEventListener("click", () => {
+        activeCats.delete("__all__");
+        activeCats.delete("__all__:" + grp);
+        if (activeCats.has(cat.name)) {
+          activeCats.delete(cat.name);
+          if (activeCats.size === 0) activeCats = new Set(["__all__"]);
+        } else {
+          activeCats.add(cat.name);
+        }
+        refreshSubgridStyles(subGrid, cats);
+        renderEvents();
+      });
+      subGrid.appendChild(btn);
+    });
+    detailRow.appendChild(subGrid);
+  });
+}
+
+function refreshGroupStyles(groupGrid) {
+  groupGrid.querySelectorAll(".cat-toggle").forEach(b => {
+    const name = b.dataset.name;
+    const on = activeGroups.has(name) || (name === "__all__" && activeGroups.has("__all__"));
+    applyToggleStyle(b, on, b.dataset.color);
+  });
+}
+
+function refreshSubgridStyles(subGrid, cats) {
+  subGrid.querySelectorAll(".cat-toggle").forEach(b => {
+    const name = b.dataset.name;
+    const on = name.startsWith("__all__") 
+      ? !cats.some(c => activeCats.has(c.name))
+      : activeCats.has(name);
+    applyToggleStyle(b, on, b.dataset.color);
   });
 }
 
@@ -713,23 +727,27 @@ function renderEvents() {
     ? currentData.categories
     : currentData.categories.filter(c => activeCats.has(c.name));
 
-  // Filter by category group first
-  const groupFiltered = activeCatGroup === "__all__"
+  // Filter by active groups
+  const groupFiltered = activeGroups.has("__all__")
     ? (cats || [])
-    : (cats || []).filter(c => (c.events||[])[0]?.category_group === activeCatGroup);
+    : (cats || []).filter(c => {
+        const grp = (c.events||[])[0]?.category_group || "Other";
+        return activeGroups.has(grp);
+      });
 
   const allFiltered = groupFiltered.flatMap(c => (c.events || []).map(ev => ({...ev, _cat: c.name})));
 
-  // Filter by specific category within group
+  // Filter by specific category
   const catFiltered = activeCats.has("__all__")
     ? allFiltered
     : allFiltered.filter(ev => activeCats.has(ev._cat));
 
-  // Filter by area zone then specific area
-  const zoneFiltered = activeAreaZone === "__all__"
+  // Filter by area zone
+  const zoneFiltered = activeAreaZones.has("__all__")
     ? catFiltered
-    : catFiltered.filter(ev => ev.area_zone === activeAreaZone);
+    : catFiltered.filter(ev => ev.area_zone && activeAreaZones.has(ev.area_zone));
 
+  // Filter by specific area
   const events = activeAreas.has("__all__")
     ? zoneFiltered
     : zoneFiltered.filter(ev => ev.area && activeAreas.has(ev.area));
