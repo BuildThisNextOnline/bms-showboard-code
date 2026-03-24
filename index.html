@@ -652,6 +652,109 @@ function refreshSubgridStyles(subGrid, cats) {
   });
 }
 
+function renderAreaToggles(categories) {
+  const allEvents = categories.flatMap(c => c.events || []);
+  const zoneCounts = {};
+  const zoneAreas = {};
+  allEvents.forEach(ev => {
+    const zone = ev.area_zone;
+    const area = ev.area;
+    if (!zone || !area) return;
+    zoneCounts[zone] = (zoneCounts[zone] || 0) + 1;
+    if (!zoneAreas[zone]) zoneAreas[zone] = {};
+    zoneAreas[zone][area] = (zoneAreas[zone][area] || 0) + 1;
+  });
+
+  const section = document.getElementById("area-filter-section");
+  const zoneGrid = document.getElementById("area-zone-grid");
+  zoneGrid.innerHTML = "";
+  document.getElementById("area-detail-row").innerHTML = "";
+  document.getElementById("area-detail-row").classList.add("hidden");
+
+  if (Object.keys(zoneCounts).length === 0) { section.classList.add("hidden"); return; }
+  section.classList.remove("hidden");
+
+  const totalAreas = allEvents.filter(e => e.area).length;
+  const allBtn = makeAreaToggle("__all__", "\u2299 All Areas (" + totalAreas + ")", true);
+  allBtn.addEventListener("click", () => {
+    activeAreaZones = new Set(["__all__"]);
+    activeAreas = new Set(["__all__"]);
+    document.getElementById("area-detail-row").innerHTML = "";
+    document.getElementById("area-detail-row").classList.add("hidden");
+    document.querySelectorAll("#area-zone-grid .cat-toggle").forEach(b =>
+      applyToggleStyle(b, b.dataset.name === "__all__", "#9a8060"));
+    renderEvents();
+  });
+  zoneGrid.appendChild(allBtn);
+
+  ["Central", "South", "North", "East", "West", "Other"].forEach(zone => {
+    if (!zoneCounts[zone]) return;
+    const btn = makeAreaToggle(zone, zone + " (" + zoneCounts[zone] + ")", false);
+    btn.addEventListener("click", () => {
+      if (activeAreaZones.has("__all__")) activeAreaZones = new Set();
+      if (activeAreaZones.has(zone)) {
+        activeAreaZones.delete(zone);
+        if (activeAreaZones.size === 0) activeAreaZones = new Set(["__all__"]);
+      } else {
+        activeAreaZones.add(zone);
+      }
+      activeAreas = new Set(["__all__"]);
+      rebuildLevel2Areas(zoneAreas, activeAreaZones);
+      document.querySelectorAll("#area-zone-grid .cat-toggle").forEach(b =>
+        applyToggleStyle(b, activeAreaZones.has(b.dataset.name) || (b.dataset.name === "__all__" && activeAreaZones.has("__all__")), "#9a8060"));
+      renderEvents();
+    });
+    zoneGrid.appendChild(btn);
+  });
+}
+
+function rebuildLevel2Areas(zoneAreas, activeAreaZones) {
+  const detailRow = document.getElementById("area-detail-row");
+  detailRow.innerHTML = "";
+  if (activeAreaZones.has("__all__") || activeAreaZones.size === 0) {
+    detailRow.classList.add("hidden");
+    return;
+  }
+  detailRow.classList.remove("hidden");
+  activeAreaZones.forEach(zone => {
+    const areas = Object.entries(zoneAreas[zone] || {}).sort((a,b) => a[0].localeCompare(b[0]));
+    if (areas.length === 0) return;
+    const label = document.createElement("div");
+    label.className = "filter-label-sub";
+    label.textContent = zone;
+    detailRow.appendChild(label);
+    const subGrid = document.createElement("div");
+    subGrid.className = "cat-grid";
+    const zoneTotal = areas.reduce((n, [,c]) => n + c, 0);
+    const allBtn = makeAreaToggle("__all__:" + zone, "\u2299 All " + zone + " (" + zoneTotal + ")", true);
+    allBtn.addEventListener("click", () => {
+      areas.forEach(([a]) => activeAreas.delete(a));
+      if (activeAreas.size === 0) activeAreas = new Set(["__all__"]);
+      subGrid.querySelectorAll(".cat-toggle").forEach(b =>
+        applyToggleStyle(b, b.dataset.name.startsWith("__all__"), "#9a8060"));
+      renderEvents();
+    });
+    subGrid.appendChild(allBtn);
+    areas.forEach(([area, count]) => {
+      const btn = makeAreaToggle(area, "\u234b " + area + " (" + count + ")", false);
+      btn.addEventListener("click", () => {
+        activeAreas.delete("__all__");
+        if (activeAreas.has(area)) {
+          activeAreas.delete(area);
+          if (activeAreas.size === 0) activeAreas = new Set(["__all__"]);
+        } else {
+          activeAreas.add(area);
+        }
+        subGrid.querySelectorAll(".cat-toggle").forEach(b =>
+          applyToggleStyle(b, b.dataset.name.startsWith("__all__") ? !areas.some(([a]) => activeAreas.has(a)) : activeAreas.has(b.dataset.name), "#9a8060"));
+        renderEvents();
+      });
+      subGrid.appendChild(btn);
+    });
+    detailRow.appendChild(subGrid);
+  });
+}
+
 function makeAreaToggle(name, label, isActive) {
   const btn = document.createElement("button");
   btn.className = "cat-toggle" + (isActive ? " active" : "");
