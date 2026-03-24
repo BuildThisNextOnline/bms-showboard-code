@@ -626,6 +626,7 @@ function rebuildLevel2Cats(groupCats, activeGroups) {
           activeCats.add(cat.name);
         }
         refreshSubgridStyles(subGrid, cats);
+        refreshGroupStyles(document.getElementById("cat-group-grid"));
         renderEvents();
       });
       subGrid.appendChild(btn);
@@ -790,17 +791,7 @@ function makeToggle(name, label, color, isActive) {
   btn.dataset.name = name;
   btn.dataset.color = color;
   applyToggleStyle(btn, isActive, color);
-  btn.addEventListener("click", () => {
-    toggleCat(name);
-    // Re-style all toggles
-    document.querySelectorAll(".cat-toggle").forEach(b => {
-      const n = b.dataset.name;
-      const c = b.dataset.color;
-      const on = activeCats.has(n);
-      applyToggleStyle(b, on, c);
-    });
-    renderEvents();
-  });
+  // No generic click handler -- callers add their own specific handlers
   return btn;
 }
 
@@ -826,14 +817,11 @@ function renderEvents() {
   container.innerHTML = "";
 
   if (!currentData) return;
-  const cats = activeCats.has("__all__")
-    ? currentData.categories
-    : currentData.categories.filter(c => activeCats.has(c.name));
 
-  // Filter by active groups
+  // Filter by active groups first
   const groupFiltered = activeGroups.has("__all__")
-    ? (cats || [])
-    : (cats || []).filter(c => {
+    ? currentData.categories
+    : currentData.categories.filter(c => {
         const grp = (c.events||[])[0]?.category_group || "Other";
         return activeGroups.has(grp);
       });
