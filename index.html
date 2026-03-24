@@ -801,16 +801,22 @@ function rebuildLevel2Areas(zoneAreas, activeAreaZones) {
     subGrid.className = "cat-grid";
     const zoneTotal = areas.reduce((n, [,c]) => n + c, 0);
     const allBtn = makeAreaToggle("__all__:" + zone, "\u2299 All " + zone + " (" + zoneTotal + ")", true);
+    const capturedZone = zone;
+    allBtn.dataset.zone = zone;
     allBtn.addEventListener("click", () => {
-      areas.forEach(([a]) => activeAreas.delete(a));
+      const zAreas = Object.keys(window._bmsZoneAreas?.[capturedZone] || {});
+      zAreas.forEach(a => activeAreas.delete(a));
       if (activeAreas.size === 0) activeAreas = new Set(["__all__"]);
-      subGrid.querySelectorAll(".cat-toggle").forEach(b =>
-        applyToggleStyle(b, b.dataset.name.startsWith("__all__"), "#9a8060"));
+      const liveRow = document.getElementById("area-detail-row");
+      liveRow.querySelectorAll(".cat-toggle").forEach(b => {
+        applyToggleStyle(b, b.dataset.name.startsWith("__all__"), "#9a8060");
+      });
       renderEvents();
     });
     subGrid.appendChild(allBtn);
     areas.forEach(([area, count]) => {
       const btn = makeAreaToggle(area, "\u234b " + area + " (" + count + ")", false);
+      btn.dataset.zone = zone;
       btn.addEventListener("click", () => {
         activeAreas.delete("__all__");
         if (activeAreas.has(area)) {
@@ -819,8 +825,18 @@ function rebuildLevel2Areas(zoneAreas, activeAreaZones) {
         } else {
           activeAreas.add(area);
         }
-        subGrid.querySelectorAll(".cat-toggle").forEach(b =>
-          applyToggleStyle(b, b.dataset.name.startsWith("__all__") ? !areas.some(([a]) => activeAreas.has(a)) : activeAreas.has(b.dataset.name), "#9a8060"));
+        // Re-style buttons in the live DOM (subGrid may have been rebuilt)
+        const liveRow = document.getElementById("area-detail-row");
+        liveRow.querySelectorAll(".cat-toggle").forEach(b => {
+          const isAll = b.dataset.name.startsWith("__all__:");
+          const bZone = b.dataset.zone || b.dataset.name.replace("__all__:", "");
+          if (isAll) {
+            const zAreas = Object.keys(window._bmsZoneAreas?.[bZone] || {});
+            applyToggleStyle(b, !zAreas.some(a => activeAreas.has(a)), "#9a8060");
+          } else {
+            applyToggleStyle(b, activeAreas.has(b.dataset.name), "#9a8060");
+          }
+        });
         renderEvents();
       });
       subGrid.appendChild(btn);
