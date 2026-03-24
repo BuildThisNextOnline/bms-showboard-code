@@ -743,7 +743,14 @@ function rebuildCatCounts(filteredEvents) {
   if (!detailRow || detailRow.classList.contains("hidden")) return;
   detailRow.querySelectorAll(".cat-toggle").forEach(btn => {
     const name = btn.dataset.name;
-    if (name.startsWith("__all__")) return;
+    if (name.startsWith("__all__:")) {
+      // Update the "All <group>" button with sum of its member counts
+      const grp = name.replace("__all__:", "");
+      const grpCats = (window._bmsGroupCats?.[grp] || []).map(c => c.name);
+      const grpCount = grpCats.reduce((n, cat) => n + (catCounts[cat] || 0), 0);
+      btn.textContent = btn.textContent.replace(/\s*\(\d+\)$/, "") + " (" + grpCount + ")";
+      return;
+    }
     const count = catCounts[name] || 0;
     btn.style.opacity = count === 0 ? "0.4" : "1";
     btn.textContent = btn.textContent.replace(/\s*\(\d+\)$/, "") + " (" + count + ")";
@@ -818,14 +825,19 @@ function rebuildAreaCounts(filteredEvents) {
     const detailRow = document.getElementById("area-detail-row");
     detailRow.querySelectorAll(".cat-toggle").forEach(btn => {
       const name = btn.dataset.name;
-      if (name.startsWith("__all__:")) return; // skip all-buttons
+      if (name.startsWith("__all__:")) {
+        // Update the "All <zone>" button
+        const zone = name.replace("__all__:", "");
+        const zoneTotal = Object.values(window._bmsZoneAreas?.[zone] || {}).reduce((n,c) => n+c, 0);
+        btn.textContent = btn.textContent.replace(/\s*\(\d+\)$/, "") + " (" + zoneTotal + ")";
+        return;
+      }
       const zone = btn.dataset.zone;
       const newCount = (window._bmsZoneAreas?.[zone]?.[name]) || 0;
       if (newCount === 0) {
         btn.style.opacity = "0.4";
       } else {
         btn.style.opacity = "1";
-        // Update count in label
         btn.textContent = "\u234b " + name + " (" + newCount + ")";
       }
     });
